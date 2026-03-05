@@ -11,3 +11,5 @@ const userSchema = new mongoose.Schema(
 );
 
 module.exports = mongoose.model("User", userSchema);
+
+//user model me role add kiya hai
