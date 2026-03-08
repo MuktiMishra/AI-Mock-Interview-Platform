@@ -1,4 +1,4 @@
-const mongoose = require("mongoose");
+import mongoose from "mongoose";
 
 const sessionSchema = new mongoose.Schema(
   {
@@ -12,6 +12,14 @@ const sessionSchema = new mongoose.Schema(
 
     currentIndex: { type: Number, default: 0 },
     status: { type: String, enum: ["in_progress", "completed"], default: "in_progress" },
+        startedAt: {
+      type: Date,
+      default: Date.now,
+    },
+    completedAt: {
+      type: Date,
+      default: null,
+    },
 
     // for later: dynamic cross question rules
     crossQuestionPlan: {
@@ -22,4 +30,6 @@ const sessionSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-module.exports = mongoose.model("Session", sessionSchema);
+const Session = mongoose.model("Session", sessionSchema);
+
+export default Session;

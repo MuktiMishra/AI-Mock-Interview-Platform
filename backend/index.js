@@ -3,8 +3,11 @@ import mongoose from "mongoose";
 import cors from "cors";
 import dotenv from "dotenv";
 import authRoutes from "./routes/auth.routes.js";
+import sessionRoutes from "./routes/session.routes.js";
 import {createServer} from 'http'
 import {Server} from 'socket.io'
+import cookieParser from "cookie-parser";
+
 
 dotenv.config();
 
@@ -14,8 +17,10 @@ const io = new Server(server)
 
 app.use(cors());
 app.use(express.json());
+app.use(cookieParser());
 
 app.use("/api/auth", authRoutes);
+app.use("/session", sessionRoutes);
 
 io.on('connection', (socket) => {
     console.log("a user connected, socketid:", socket.id); 
