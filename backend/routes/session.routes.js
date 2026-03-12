@@ -11,11 +11,11 @@ import upload from "../middleware/upload.middleware.js";
 
 const router = express.Router();
 
-router.post("/start", authMiddleware, startSession);
-router.get("/:id/current", authMiddleware, getCurrentQuestion);
-router.post("/:id/answer", authMiddleware, upload.single("audio"), submitAnswer);
-router.get("/:id/summary", authMiddleware, getSessionSummary);
-router.get("/:id/answers", authMiddleware, getSessionAnswers);
+router.post("/start", startSession);
+router.get("/:id/current", getCurrentQuestion);
+router.post("/:id/answer", upload.single("audio"), submitAnswer);
+router.get("/:id/summary", getSessionSummary);
+router.get("/:id/answers", getSessionAnswers);
 
 export default router;
 

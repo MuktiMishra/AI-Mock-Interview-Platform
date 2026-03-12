@@ -14,12 +14,12 @@ export const getSessionAnswers = async (req, res) => {
       });
     }
 
-    if (String(session.userId) !== String(req.user.id)) {
-      return res.status(403).json({
-        success: false,
-        message: "Not authorized for this session",
-      });
-    }
+    // if (String(session.userId) !== String(req.user.id)) {
+    //   return res.status(403).json({
+    //     success: false,
+    //     message: "Not authorized for this session",
+    //   });
+    // }
 
     const answers = await Answer.find({ sessionId: session._id })
       .populate("questionId", "text section domain level")
@@ -31,6 +31,7 @@ export const getSessionAnswers = async (req, res) => {
       data: answers,
     });
   } catch (error) {
+    console.log(error)
     return res.status(500).json({
       success: false,
       message: "Failed to fetch session answers",

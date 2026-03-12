@@ -2,6 +2,7 @@ import Session from "../models/session.model.js";
 import Question from "../models/question.model.js";
 
 export const startSession = async (req, res) => {
+  console.log("came here")
   try {
     const { domain, level } = req.body;
 
@@ -11,6 +12,8 @@ export const startSession = async (req, res) => {
         message: "domain and level are required",
       });
     }
+
+    console.log(domain, level)
 
     const aptitude = await Question.find({
       domain,
@@ -40,7 +43,7 @@ export const startSession = async (req, res) => {
     }
 
     const session = await Session.create({
-      userId: req.user.id,
+      userId: "69b331f2a1a48f5fa629022f", // req.user.id for testing put 123
       domain,
       level,
       questionIds: selectedQuestions.map((q) => q._id),
@@ -59,6 +62,7 @@ export const startSession = async (req, res) => {
       },
     });
   } catch (error) {
+    console.log(error)
     return res.status(500).json({
       success: false,
       message: "Failed to start session",

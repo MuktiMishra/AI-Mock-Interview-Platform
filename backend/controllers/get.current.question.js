@@ -6,6 +6,8 @@ export const getCurrentQuestion = async (req, res) => {
   try {
     const { id } = req.params;
 
+    console.log(id)
+
     const session = await Session.findById(id);
 
     if (!session) {
@@ -15,12 +17,12 @@ export const getCurrentQuestion = async (req, res) => {
       });
     }
 
-    if (String(session.userId) !== String(req.user.id)) {
-      return res.status(403).json({
-        success: false,
-        message: "Not authorized for this session",
-      });
-    }
+    // if (String(session.userId) !== String(req.user.id)) {
+    //   return res.status(403).json({
+    //     success: false,
+    //     message: "Not authorized for this session",
+    //   });
+    // }
 
     if (session.status === "completed") {
       return res.status(200).json({
@@ -60,6 +62,7 @@ export const getCurrentQuestion = async (req, res) => {
       },
     });
   } catch (error) {
+    console.log(error)
     return res.status(500).json({
       success: false,
       message: "Failed to get current question",

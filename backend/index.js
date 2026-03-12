@@ -21,7 +21,10 @@ const app = express();
 const server = createServer(app); 
 const io = new Server(server)
 
-app.use(cors());
+app.use(cors({
+    origin: "http://localhost:5173",
+    credentials: true
+}));
 app.use(express.json());
 app.use(cookieParser());
 
@@ -36,6 +39,6 @@ io.on('connection', (socket) => {
 mongoose.connect(process.env.MONGO_URI)
 .then(() => {
     console.log("MongoDB Connected");
-    server.listen(5000, () => console.log("Server running on port 5000"));
+    server.listen(8000, () => console.log("Server running on port 8000"));
 })
 .catch(err => console.log(err));
