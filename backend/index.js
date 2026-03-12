@@ -7,6 +7,12 @@ import sessionRoutes from "./routes/session.routes.js";
 import {createServer} from 'http'
 import {Server} from 'socket.io'
 import cookieParser from "cookie-parser";
+import path from "path";
+import { fileURLToPath } from "url";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
 
 
 dotenv.config();
@@ -21,6 +27,7 @@ app.use(cookieParser());
 
 app.use("/api/auth", authRoutes);
 app.use("/session", sessionRoutes);
+app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
 io.on('connection', (socket) => {
     console.log("a user connected, socketid:", socket.id); 

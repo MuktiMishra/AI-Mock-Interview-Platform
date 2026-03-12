@@ -43,17 +43,27 @@ export const submitAnswer = async (req, res) => {
       });
     }
 
+    const file = req.file;
+
     await Answer.create({
       sessionId: session._id,
       questionId: currentQuestionId,
       userId: req.user.id,
-      audio: {
-        fileName: "",
-        mimeType: "",
-        sizeBytes: 0,
-        durationSec: 0,
-        path: "",
-      },
+      audio: file
+        ? {
+            fileName: file.filename,
+            mimeType: file.mimetype,
+            sizeBytes: file.size,
+            durationSec: 0,
+            path: file.path,
+          }
+        : {
+            fileName: "",
+            mimeType: "",
+            sizeBytes: 0,
+            durationSec: 0,
+            path: "",
+          },
     });
 
     session.currentIndex += 1;
@@ -81,7 +91,6 @@ export const submitAnswer = async (req, res) => {
       message: "Answer submitted",
       data: {
         completed: false,
-        sessionId: session._id,
         currentIndex: session.currentIndex,
         totalQuestions: session.questionIds.length,
         question: nextQuestion,
