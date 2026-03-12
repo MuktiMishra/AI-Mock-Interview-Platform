@@ -14,3 +14,6 @@ router.get("/:id/current", authMiddleware, getCurrentQuestion);
 router.post("/:id/answer", authMiddleware, upload.single("audio"), submitAnswer);
 
 export default router;
+
+router.get("/:id/summary", authMiddleware, getSessionSummary);
+router.get("/:id/answers", authMiddleware, getSessionAnswers);
