@@ -1,4 +1,4 @@
-const mongoose = require("mongoose");
+import mongoose from "mongoose";
 
 const answerSchema = new mongoose.Schema(
   {
@@ -10,11 +10,10 @@ const answerSchema = new mongoose.Schema(
       fileName: String,
       mimeType: String,
       sizeBytes: Number,
-      durationSec: Number, 
+      durationSec: Number,
       path: String
     },
 
-    // bad me ai outputs
     transcript: { type: String, default: "" },
     metrics: {
       fillerCount: { type: Number, default: 0 },
@@ -26,4 +25,6 @@ const answerSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-module.exports = mongoose.model("Answer", answerSchema);
+const Answer = mongoose.model("Answer", answerSchema);
+
+export default Answer;
