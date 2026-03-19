@@ -80,6 +80,7 @@ export default function InterviewSession() {
     if (!audioBlob) return;
 
     const formData = new FormData();
+    formData.append('question', question); 
     formData.append("audio", audioBlob);
 
     try {
