@@ -1,5 +1,6 @@
 import Session from "../models/session.model.js";
 import Question from "../models/question.model.js";
+import Answer from "../models/answer.model.js";
 
 export const startSession = async (req, res) => {
   console.log("came here")
@@ -67,6 +68,28 @@ export const startSession = async (req, res) => {
       success: false,
       message: "Failed to start session",
       error: error.message,
+    });
+  }
+};
+
+export const getReport = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const answers = await Answer.find({ sessionId: id })
+      .populate("questionId");
+
+    return res.status(200).json({
+      success: true,
+      data: {
+        answers,
+      },
+    });
+  } catch (error) {
+    console.log("error", error)
+    res.status(500).json({
+      success: false,
+      message: error.message,
     });
   }
 };

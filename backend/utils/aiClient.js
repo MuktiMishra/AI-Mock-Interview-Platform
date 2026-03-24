@@ -1,11 +1,11 @@
-import { GoogleGenerativeAI } from "@google/generative-ai";
+import {OpenRouter} from "@openrouter/sdk"
 import dotenv from 'dotenv'
 
-dotenv.config(); 
+dotenv.config()
+console.log(process.env.OPENROUTER_API_KEY)
 
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY); 
-const model = genAI.getGenerativeModel({
-    model: 'gemini-2.0-flash'
+const model = new OpenRouter({
+    apiKey: process.env.OPENROUTER_API_KEY
 })
 
 export default model; 

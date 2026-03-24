@@ -1,5 +1,5 @@
 import express from "express";
-import { startSession } from "../controllers/session.controller.js";
+import { getReport, startSession } from "../controllers/session.controller.js";
 import { authMiddleware } from "../middleware/protect.route.js";
 import { getCurrentQuestion } from "../controllers/get.current.question.js";
 import { getSessionSummary } from "../controllers/get.session.summary.js";
@@ -16,6 +16,7 @@ router.get("/:id/current", getCurrentQuestion);
 router.post("/:id/answer", upload.single("audio"), submitAnswer);
 router.get("/:id/summary", getSessionSummary);
 router.get("/:id/answers", getSessionAnswers);
+router.get("/:id/report", getReport);
 
 export default router;
 
