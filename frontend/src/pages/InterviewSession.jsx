@@ -1,10 +1,12 @@
 import { useEffect, useRef, useState } from "react";
 import { useParams } from "react-router-dom";
 import axios from "axios";
+import { useNavigate } from "react-router-dom";
 
 export default function InterviewSession() {
 
   const { id } = useParams();
+  const navigate = useNavigate(); 
 
   const [question, setQuestion] = useState("");
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -97,7 +99,7 @@ export default function InterviewSession() {
       );
 
       if (res.data.data.completed) {
-        alert("Interview Completed 🎉");
+        navigate(`/report/${id}`);
         return;
       }
 
