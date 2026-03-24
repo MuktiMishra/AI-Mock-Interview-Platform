@@ -4,6 +4,8 @@ export const authMiddleware = (req, res, next) => {
   try {
     let token = null;
 
+    console.log("came here", req.cookies?.token); 
+
     if (req.cookies?.token) {
       token = req.cookies.token;
     } else if (req.headers.authorization?.startsWith("Bearer ")) {
