@@ -35,7 +35,7 @@ const handleSubmit = async (e) => {
     );
 
     if (res.status === 200) {
-        return navigate('/'); 
+        return navigate('/dashboard'); 
     } else {
         return alert('sorry failed to login')
     }
