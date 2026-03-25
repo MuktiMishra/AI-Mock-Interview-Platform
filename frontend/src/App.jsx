@@ -8,6 +8,7 @@ import LoginPage from "./pages/Login";
 import SignupPage from "./pages/Signup";
 import ReportPage from "./pages/ReportPage";
 import ProtectedRoute from "./pages/ProtectedRoute";
+import LoginDashboard from "./pages/LoginDashboard";
 
 export default function App() {
   return (
@@ -20,6 +21,7 @@ export default function App() {
         <Route path="/login" element={<LoginPage />} />
         <Route path="/signup" element={<SignupPage />} />
         <Route path="/report/:id" element={<ProtectedRoute><ReportPage /></ProtectedRoute>} />
+        <Route path="/dashboard" element={<ProtectedRoute><LoginDashboard /></ProtectedRoute>} />
 
         <Route path="/interview/:id" element={<InterviewSession />} />
       </Routes>

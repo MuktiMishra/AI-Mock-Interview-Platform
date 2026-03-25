@@ -15,9 +15,7 @@ export default function ReportPage() {
           `http://localhost:8000/session/${id}/report`,
           { withCredentials: true }
         );
-
         console.log(res)
-
         setAnswers(res.data.data.answers);
       } catch (err) {
         console.error(err);
@@ -50,7 +48,7 @@ export default function ReportPage() {
             className="border border-purple-200 rounded-lg p-5 mb-4 bg-purple-50"
           >
             <h2 className="font-semibold text-purple-800 mb-2">
-              Question {index + 1} {ans.questionId.text}
+              Question {index + 1} 
             </h2>
 
             <p className="text-gray-700 mb-2">

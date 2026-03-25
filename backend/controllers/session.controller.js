@@ -78,6 +78,7 @@ export const getReport = async (req, res) => {
 
     const answers = await Answer.find({ sessionId: id })
       .populate("questionId");
+      console.log(answers)
 
     return res.status(200).json({
       success: true,

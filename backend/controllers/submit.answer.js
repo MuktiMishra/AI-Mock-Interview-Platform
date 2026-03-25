@@ -154,11 +154,12 @@ export const submitAnswer = async (req, res) => {
 
 
     const score = parseInt(fullText.match(/\d+/)?.[0]);
+    console.log(req.user.id)
 
     await Answer.create({
       sessionId: session._id,
       questionId: currentQuestionId,
-      userId: "69b331f2a1a48f5fa629022f",
+      userId: req.user.id,
       transcript,
       score,
       audio: file

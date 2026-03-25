@@ -1,6 +1,7 @@
 import User from "../models/user.model.js";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
+import Session from "../models/session.model.js";
 
 export const signup = async (req, res) => {
     try {
@@ -86,4 +87,25 @@ export const getMe = async (req, res) => {
     success: true,
     user: req.user,
   });
+};
+
+export const getUserSessions = async (req, res) => {
+  try {
+    console.log(req.user.id)
+    const sessions = await Session.find({
+      userId: req.user.id,
+    }).sort({ createdAt: -1 });
+    console.log(sessions)
+
+    return res.status(200).json({
+      success: true,
+      data: sessions,
+    });
+  } catch (error) {
+    console.log("error", error)
+    res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
 };
