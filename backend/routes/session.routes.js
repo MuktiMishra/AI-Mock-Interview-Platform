@@ -12,7 +12,7 @@ import { getUserSessions } from "../controllers/user.controller.js";
 
 const router = express.Router();
 
-router.post("/start", startSession);
+router.post("/start", authMiddleware, startSession);
 router.get("/:id/current", getCurrentQuestion);
 router.post("/:id/answer", upload.single("audio"), authMiddleware, submitAnswer);
 router.get("/:id/summary", getSessionSummary);

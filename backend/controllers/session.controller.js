@@ -44,7 +44,7 @@ export const startSession = async (req, res) => {
     }
 
     const session = await Session.create({
-      userId: "69b331f2a1a48f5fa629022f", // req.user.id for testing put 123
+      userId: req.user.id, // req.user.id for testing put 123
       domain,
       level,
       questionIds: selectedQuestions.map((q) => q._id),
