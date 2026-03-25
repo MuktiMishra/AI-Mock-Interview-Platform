@@ -126,7 +126,7 @@ const handleSubmit = async (e) => {
         {/* Signup */}
         <p className="text-center text-gray-500 text-sm mt-6">
           Don’t have an account?
-          <a href="#" className="text-purple-500 hover:underline ml-1">Sign up</a>
+          <a href="/signup" className="text-purple-500 hover:underline ml-1">Sign up</a>
         </p>
       </motion.div>
     </div>
