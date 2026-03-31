@@ -8,7 +8,7 @@ This repository contains an MVP implementation focused on **speed of development
 
 ---
 
-## Features (MVP)
+## Features (MVP) - Completed
 
 - User **Register / Login** (JWT)
 - Dashboard to choose:
