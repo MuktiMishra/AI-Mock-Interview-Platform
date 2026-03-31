@@ -4,7 +4,8 @@ import Answer from "../models/answer.model.js";
 import fs from "fs";
 import { ElevenLabsClient } from "@elevenlabs/elevenlabs-js";
 import dotenv from "dotenv";
-import model from "../utils/aiClient.js";
+import model from "../utils/geminiClient.js";
+import { generateQuestion } from "./get.current.question.js";
 import axios from "axios";
 dotenv.config();
 
@@ -58,103 +59,48 @@ export const submitAnswer = async (req, res) => {
     let transcript = "";
 
     if (file) {
-      try {
-        const response = await elevenlabs.speechToText.convert({
-          file,
-          modelId: "scribe_v2", // Model to use
-          tagAudioEvents: true, // Tag audio events like laughter, applause, etc.
-          languageCode: "eng", // Language of the audio file. If set to null, the model will detect the language automatically.
-          diarize: true, // Whether to annotate who is speaking
-        });
+      const audioBuffer = fs.readFileSync(file.path);
 
-        transcript = response.text;
-        // console.log(response)
-      } catch (err) {
-        console.log("Transcription error:", err.message);
-      }
-    }
-
-    console.log(transcript)
-
-    const prompt = `You are an AI employed to evaluate a candidate's interview answer.
-
-    This is the interview question: ${question}
-    This is the candidate's answer (transcript): ${transcript}
-
-    Now I want you to evaluate the quality of the answer and return a score between 1 and 100.
-
-    You must ONLY return a single number between 1 and 100. Do not return anything else, no explanation, no text, no symbols — just the number.
-
-    Before you answer, understand the evaluation criteria:
-    - 90–100: Excellent answer — very clear, well-structured, highly relevant, and demonstrates strong understanding.
-    - 70–89: Good answer — mostly clear and relevant but may lack depth or minor clarity issues.
-    - 40–69: Average answer — somewhat relevant but lacks structure, clarity, or completeness.
-    - 1–39: Poor answer — unclear, irrelevant, incorrect, or very incomplete.
-
-    It is very important that your response is strictly a single number between 1 and 100. You can now provide the score.`;
-
-    const response = await fetch(
-      "https://openrouter.ai/api/v1/chat/completions",
-      {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${process.env.OPENROUTER_API_KEY}`,
-          "Content-Type": "application/json",
+      const result = await model.generateContent([
+        {
+          inlineData: {
+            mimeType: file.mimetype,
+            data: audioBuffer.toString("base64"),
+          },
         },
-        body: JSON.stringify({
-          model: "stepfun/step-3.5-flash:free",
-          messages: [
-            {
-              role: "user",
-              content: prompt,
-            },
-          ],
-          stream: true
-        }),
-      },
-    );
+        {
+          text: "Transcribe this audio clearly.",
+        },
+      ]);
 
-    const reader = response.body.getReader();
-    console.log(reader)
-    const decoder = new TextDecoder("utf-8");
-
-    let fullText = "";
-
-    while (true) {
-      const { done, value } = await reader.read();
-
-      if (done) break;
-
-      const chunk = decoder.decode(value, { stream: true });
-
-      const lines = chunk.split("\n");
-
-      for (let line of lines) {
-        if (line.startsWith("data: ")) {
-          const data = line.replace("data: ", "").trim();
-
-          if (data === "[DONE]") break;
-
-          try {
-            const json = JSON.parse(data);
-
-            const content =
-              json.choices?.[0]?.delta?.content ||
-              json.choices?.[0]?.message?.content;
-
-            if (content) {
-              fullText += content;
-            }
-          } catch (err) {
-            // ignore partial chunks
-          }
-        }
-      }
+      transcript = result.response.text();
     }
 
+    const prompt = `
+You are an AI interview evaluator.
 
-    const score = parseInt(fullText.match(/\d+/)?.[0]);
-    console.log(req.user.id)
+Question:
+${question}
+
+Candidate Answer:
+${transcript}
+
+Evaluate and return ONLY a number between 1 and 100.
+
+Rules:
+- 90–100: Excellent
+- 70–89: Good
+- 40–69: Average
+- 1–39: Poor
+
+STRICT: Only output a number.
+`;
+
+    const result = await model.generateContent(prompt);
+    const text = result.response.text().trim();
+
+    // Extract number safely
+    const score = parseInt(text.match(/\d+/)?.[0]) || 0;
 
     await Answer.create({
       sessionId: session._id,
@@ -195,9 +141,28 @@ export const submitAnswer = async (req, res) => {
 
     await session.save();
 
-    const nextQuestion = await Question.findById(
-      session.questionIds[session.currentIndex],
-    );
+    const sections = ["aptitude", "technical1", "technical2", "coding", "hr"];
+    const section = sections[session.currentIndex % sections.length];
+
+    const aiData = await generateQuestion({
+      domain: session.domain,
+      level: session.level,
+      section,
+    });
+
+    // Save new question
+    const newQuestion = await Question.create({
+      domain: session.domain,
+      level: session.level,
+      section,
+      text: aiData.text,
+      tags: aiData.tags,
+      expectedKeywords: aiData.expectedKeywords,
+      rubric: aiData.rubric,
+    });
+
+    session.questionIds.push(newQuestion._id);
+    await session.save();
 
     return res.status(200).json({
       success: true,
@@ -205,8 +170,8 @@ export const submitAnswer = async (req, res) => {
       data: {
         completed: false,
         currentIndex: session.currentIndex,
-        totalQuestions: session.questionIds.length,
-        question: nextQuestion,
+        totalQuestions: 10,
+        question: newQuestion,
       },
     });
   } catch (error) {
