@@ -9,12 +9,14 @@ import SignupPage from "./pages/Signup";
 import ReportPage from "./pages/ReportPage";
 import ProtectedRoute from "./pages/ProtectedRoute";
 import LoginDashboard from "./pages/LoginDashboard";
+import HomePage from "./pages/HomePage";
 
 export default function App() {
   return (
     <BrowserRouter>
       <Routes>
-        <Route path="/" element={<Dashboard />} />
+        <Route path="/" element={<HomePage />} />
+        <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
         <Route path="/interview" element={<ProtectedRoute><InterviewSession /></ProtectedRoute>} />
         <Route path="/results/:sessionId" element={<Results />} />
         <Route path="/start" element={<ProtectedRoute><StartInterview /></ProtectedRoute>} />

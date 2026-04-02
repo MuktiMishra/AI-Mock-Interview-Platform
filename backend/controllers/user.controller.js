@@ -6,14 +6,17 @@ import Session from "../models/session.model.js";
 export const signup = async (req, res) => {
     try {
         const { name, email, password } = req.body;
+        console.log(name, email, password)
 
         if (!name || !email || !password) {
+
             return res.status(400).json({ message: "All fields are required" });
         }
 
         const isExist = await User.findOne({ email });
 
         if (isExist) {
+          console.log("came here")
             return res.status(400).json({ message: "User with this email already exists" });
         }
 
