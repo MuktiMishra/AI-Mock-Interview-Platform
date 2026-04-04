@@ -1,24 +1,31 @@
 import { useEffect, useRef, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import axios from "axios";
+import { loadSettings } from "./Settings"; // adjust path to match your structure
 
 export default function InterviewSession() {
   const { id } = useParams();
   const navigate = useNavigate();
 
-  const [question, setQuestion] = useState("");
+  // Load settings once on mount
+  const settings = useRef(loadSettings()).current;
+
+  const [question, setQuestion]       = useState("");
   const [currentIndex, setCurrentIndex] = useState(0);
-  const [total, setTotal] = useState(0);
+  const [total, setTotal]             = useState(0);
+  const [recording, setRecording]     = useState(false);
+  const [audioBlob, setAudioBlob]     = useState(null);
+  const [timeLeft, setTimeLeft]       = useState(40);
+  const [loading, setLoading]         = useState(false);
 
-  const [recording, setRecording] = useState(false);
-  const [audioBlob, setAudioBlob] = useState(null);
-
-  const [timeLeft, setTimeLeft] = useState(40);
-  const [loading, setLoading] = useState(false);
+  // Score feedback (shown after submit if setting is on)
+  const [lastScore, setLastScore]     = useState(null);
+  const [showScore, setShowScore]     = useState(false);
 
   const mediaRecorderRef = useRef(null);
-  const chunksRef = useRef([]);
-  const timerRef = useRef(null);
+  const chunksRef        = useRef([]);
+  const timerRef         = useRef(null);
+  const warnedRef        = useRef(false); // so warning sound only fires once per question
 
   const loadQuestion = async () => {
     try {
@@ -29,24 +36,53 @@ export default function InterviewSession() {
       setCurrentIndex(res.data.data.currentIndex);
       setTotal(res.data.data.totalQuestions);
       setTimeLeft(40);
+      warnedRef.current = false;
+      setLastScore(null);
+      setShowScore(false);
     } catch (err) {
       console.error(err);
     }
   };
 
+  useEffect(() => { loadQuestion(); }, []);
+
+  // Warning sound — fires once when timeLeft hits the red threshold
   useEffect(() => {
-    loadQuestion();
-  }, []);
+    if (
+      settings.warningSound &&
+      timeLeft === settings.timerRedAt &&
+      !warnedRef.current &&
+      !loading
+    ) {
+      warnedRef.current = true;
+      playBeep();
+    }
+  }, [timeLeft]);
 
   useEffect(() => {
     if (loading) return;
-    if (timeLeft <= 0) {
-      handleAutoSubmit();
-      return;
-    }
+    if (timeLeft <= 0) { handleAutoSubmit(); return; }
     timerRef.current = setTimeout(() => setTimeLeft((prev) => prev - 1), 1000);
     return () => clearTimeout(timerRef.current);
   }, [timeLeft, loading]);
+
+  const playBeep = () => {
+    try {
+      const ctx = new (window.AudioContext || window.webkitAudioContext)();
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.type = "sine";
+      osc.frequency.setValueAtTime(880, ctx.currentTime);
+      gain.gain.setValueAtTime(0.3, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.4);
+      osc.start(ctx.currentTime);
+      osc.stop(ctx.currentTime + 0.4);
+    } catch (_) {
+      // AudioContext not available — silently ignore
+    }
+  };
 
   const startRecording = async () => {
     const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
@@ -78,18 +114,30 @@ export default function InterviewSession() {
     if (!isAuto && audioBlob) formData.append("audio", audioBlob);
     try {
       setLoading(true);
+      clearTimeout(timerRef.current);
+
       const res = await axios.post(`http://localhost:8000/session/${id}/answer`, formData, {
         withCredentials: true,
         headers: { "Content-Type": "multipart/form-data" },
       });
+
       if (res.data.data.completed) {
         navigate(`/report/${id}`);
         return;
       }
+
+      // Show score badge if setting is on
+      if (settings.showScoreOnSubmit && res.data.data.score !== undefined) {
+        setLastScore(res.data.data.score);
+        setShowScore(true);
+        setTimeout(() => setShowScore(false), 2000);
+      }
+
       setQuestion(res.data.data.question.text);
       setCurrentIndex(res.data.data.currentIndex);
       setAudioBlob(null);
       setTimeLeft(40);
+      warnedRef.current = false;
     } catch (err) {
       console.error(err);
     } finally {
@@ -97,11 +145,16 @@ export default function InterviewSession() {
     }
   };
 
+  // Derive colours from settings instead of hardcoded thresholds
   const timerPercent = (timeLeft / 40) * 100;
   const timerColor =
-    timeLeft > 20 ? "text-emerald-400" : timeLeft > 10 ? "text-amber-400" : "text-red-400";
+    timeLeft > settings.timerAmberAt ? "text-emerald-400"
+    : timeLeft > settings.timerRedAt  ? "text-amber-400"
+    : "text-red-400";
   const timerBarColor =
-    timeLeft > 20 ? "bg-emerald-400" : timeLeft > 10 ? "bg-amber-400" : "bg-red-500";
+    timeLeft > settings.timerAmberAt ? "bg-emerald-400"
+    : timeLeft > settings.timerRedAt  ? "bg-amber-400"
+    : "bg-red-500";
 
   return (
     <div className="min-h-screen bg-[#09090b] flex items-center justify-center px-4">
@@ -126,8 +179,6 @@ export default function InterviewSession() {
                 AI Interview
               </span>
             </div>
-
-            {/* Progress dots + counter */}
             <div className="flex items-center gap-3">
               <div className="flex gap-1.5 items-center">
                 {Array.from({ length: total }).map((_, i) => (
@@ -172,9 +223,7 @@ export default function InterviewSession() {
             <div className="absolute -inset-px rounded-xl bg-gradient-to-br from-violet-500/20 via-transparent to-indigo-500/10" />
             <div className="relative bg-white/[0.03] border border-white/[0.06] rounded-xl p-6 min-h-[100px] flex items-center">
               {question ? (
-                <p className="text-[15px] leading-relaxed text-white/75 font-light">
-                  {question}
-                </p>
+                <p className="text-[15px] leading-relaxed text-white/75 font-light">{question}</p>
               ) : (
                 <div className="flex gap-1.5">
                   <span className="w-1.5 h-1.5 rounded-full bg-white/20 animate-bounce" style={{ animationDelay: "0ms" }} />
@@ -184,6 +233,26 @@ export default function InterviewSession() {
               )}
             </div>
           </div>
+
+          {/* Score flash (only if setting enabled) */}
+          {showScore && lastScore !== null && (
+            <div className={`flex items-center gap-2 mb-5 px-4 py-2.5 rounded-xl border transition-all ${
+              lastScore >= 80
+                ? "bg-emerald-500/10 border-emerald-500/20"
+                : lastScore >= 70
+                ? "bg-amber-400/10 border-amber-400/20"
+                : "bg-red-500/10 border-red-500/20"
+            }`}>
+              <div className={`w-2 h-2 rounded-full ${
+                lastScore >= 80 ? "bg-emerald-400" : lastScore >= 70 ? "bg-amber-400" : "bg-red-400"
+              }`} />
+              <span className={`text-xs font-semibold ${
+                lastScore >= 80 ? "text-emerald-400" : lastScore >= 70 ? "text-amber-400" : "text-red-400"
+              }`}>
+                Score: {lastScore}/100 — {lastScore >= 80 ? "Excellent" : lastScore >= 70 ? "Good" : lastScore >= 40 ? "Average" : "Keep practising"}
+              </span>
+            </div>
+          )}
 
           {/* Recording waveform */}
           {recording && (
@@ -219,7 +288,6 @@ export default function InterviewSession() {
                 disabled={loading}
                 className="flex items-center gap-2 px-5 py-3 bg-violet-600 hover:bg-violet-500 disabled:opacity-40 disabled:cursor-not-allowed text-white text-sm font-semibold rounded-xl transition-all duration-200 hover:shadow-[0_0_20px_rgba(124,58,237,0.35)] active:scale-[0.98]"
               >
-                {/* Mic icon */}
                 <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
                   <path d="M12 1a4 4 0 0 1 4 4v7a4 4 0 0 1-8 0V5a4 4 0 0 1 4-4zm-1.5 14.9A6.002 6.002 0 0 1 6 10H4a8.001 8.001 0 0 0 7 7.938V20H8v2h8v-2h-3v-2.062A8.001 8.001 0 0 0 20 10h-2a6 6 0 0 1-4.5 5.9z" />
                 </svg>
@@ -259,7 +327,6 @@ export default function InterviewSession() {
           </div>
         </div>
 
-        {/* Footer hint */}
         <p className="text-center text-[11px] text-white/20 mt-4 tracking-wide">
           Answer auto-submits when the timer reaches zero
         </p>

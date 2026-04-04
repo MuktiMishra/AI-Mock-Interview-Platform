@@ -94,21 +94,142 @@ export const getMe = async (req, res) => {
 
 export const getUserSessions = async (req, res) => {
   try {
-    console.log(req.user.id)
-    const sessions = await Session.find({
-      userId: req.user.id,
-    }).sort({ createdAt: -1 });
-    console.log(sessions)
-
+    const userId = req.user.id;
+ 
+    // Fetch last 20 completed sessions for this user
+    const sessions = await Session.find({ userId, status: "completed" })
+      .sort({ completedAt: -1 })
+      .limit(20)
+      .lean();
+ 
+    if (sessions.length === 0) {
+      return res.status(200).json({
+        success: true,
+        data: { sessions: [], stats: emptyStats() },
+      });
+    }
+ 
+    const sessionIds = sessions.map((s) => s._id);
+ 
+    // Fetch all answers for these sessions in one query
+    const answers = await Answer.find({ sessionId: { $in: sessionIds } })
+      .select("sessionId score createdAt")
+      .lean();
+ 
+    // Group answers by sessionId
+    const answersBySession = {};
+    answers.forEach((a) => {
+      const key = String(a.sessionId);
+      if (!answersBySession[key]) answersBySession[key] = [];
+      answersBySession[key].push(a.score);
+    });
+ 
+    // Enrich each session with its avg score
+    const enriched = sessions.map((s) => {
+      const scores = answersBySession[String(s._id)] || [];
+      const avg = scores.length
+        ? Math.round(scores.reduce((a, b) => a + b, 0) / scores.length)
+        : 0;
+      return { ...s, avgScore: avg, totalAnswers: scores.length };
+    });
+ 
+    // ── Compute stats ──
+ 
+    // Total sessions
+    const totalSessions = enriched.length;
+ 
+    // Avg score across all sessions
+    const overallAvg = Math.round(
+      enriched.reduce((sum, s) => sum + s.avgScore, 0) / totalSessions
+    );
+ 
+    // Best domain (most sessions)
+    const domainCount = {};
+    enriched.forEach((s) => {
+      domainCount[s.domain] = (domainCount[s.domain] || 0) + 1;
+    });
+    const bestDomain = Object.entries(domainCount).sort((a, b) => b[1] - a[1])[0];
+ 
+    // Score by domain (avg score per domain)
+    const domainScores = {};
+    const domainTotals = {};
+    enriched.forEach((s) => {
+      if (!domainScores[s.domain]) { domainScores[s.domain] = 0; domainTotals[s.domain] = 0; }
+      domainScores[s.domain] += s.avgScore;
+      domainTotals[s.domain] += 1;
+    });
+    const scoreByDomain = Object.entries(domainScores).map(([domain, total]) => ({
+      domain,
+      avg: Math.round(total / domainTotals[domain]),
+    })).sort((a, b) => b.avg - a.avg);
+ 
+    // Streak — count consecutive days with at least one session ending from today backwards
+    const streak = computeStreak(enriched);
+ 
+    // Sessions this week (for delta)
+    const oneWeekAgo = new Date();
+    oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
+    const sessionsThisWeek = enriched.filter(
+      (s) => new Date(s.completedAt) >= oneWeekAgo
+    ).length;
+ 
     return res.status(200).json({
       success: true,
-      data: sessions,
+      data: {
+        sessions: enriched.slice(0, 5), // last 5 for recent sessions panel
+        stats: {
+          totalSessions,
+          overallAvg,
+          bestDomain: bestDomain ? { name: bestDomain[0], count: bestDomain[1] } : null,
+          streak,
+          sessionsThisWeek,
+          scoreByDomain,
+        },
+      },
     });
   } catch (error) {
-    console.log("error", error)
-    res.status(500).json({
+    console.error(error);
+    return res.status(500).json({
       success: false,
-      message: error.message,
+      message: "Failed to fetch sessions",
+      error: error.message,
     });
   }
 };
+ 
+function computeStreak(sessions) {
+  if (!sessions.length) return 0;
+ 
+  // Get unique days that had a completed session (YYYY-MM-DD strings)
+  const days = new Set(
+    sessions.map((s) => new Date(s.completedAt).toISOString().slice(0, 10))
+  );
+ 
+  let streak = 0;
+  const today = new Date();
+ 
+  for (let i = 0; i < 365; i++) {
+    const d = new Date(today);
+    d.setDate(d.getDate() - i);
+    const key = d.toISOString().slice(0, 10);
+    if (days.has(key)) {
+      streak++;
+    } else {
+      break; // streak broken
+    }
+  }
+ 
+  return streak;
+}
+ 
+function emptyStats() {
+  return {
+    totalSessions: 0,
+    overallAvg: 0,
+    bestDomain: null,
+    streak: 0,
+    sessionsThisWeek: 0,
+    scoreByDomain: [],
+  };
+}
+ 

@@ -10,6 +10,8 @@ import ReportPage from "./pages/ReportPage";
 import ProtectedRoute from "./pages/ProtectedRoute";
 import LoginDashboard from "./pages/LoginDashboard";
 import HomePage from "./pages/HomePage";
+import History from "./pages/History";
+import Settings from "./pages/Settings";
 
 export default function App() {
   return (
@@ -24,6 +26,8 @@ export default function App() {
         <Route path="/signup" element={<SignupPage />} />
         <Route path="/report/:id" element={<ProtectedRoute><ReportPage /></ProtectedRoute>} />
         <Route path="/dashboard" element={<ProtectedRoute><LoginDashboard /></ProtectedRoute>} />
+        <Route path="/history" element={<ProtectedRoute><History /></ProtectedRoute>} />
+        <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
 
         <Route path="/interview/:id" element={<InterviewSession />} />
       </Routes>

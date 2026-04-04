@@ -7,6 +7,7 @@ import dotenv from "dotenv";
 import model from "../utils/geminiClient.js";
 import { generateQuestion } from "./get.current.question.js";
 import axios from "axios";
+import { QUESTION_PLAN } from "../utils/questionPlan.js";
 dotenv.config();
 
 console.log(process.env.ELEVENLABS_API_KEY);
@@ -141,8 +142,7 @@ STRICT: Only output a number.
 
     await session.save();
 
-    const sections = ["aptitude", "technical1", "technical2", "coding", "hr"];
-    const section = sections[session.currentIndex % sections.length];
+    const section = QUESTION_PLAN[session.currentIndex];
 
     const aiData = await generateQuestion({
       domain: session.domain,

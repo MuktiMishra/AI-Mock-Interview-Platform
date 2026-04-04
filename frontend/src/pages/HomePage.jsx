@@ -156,7 +156,7 @@ export default function HomePage() {
           <span className="text-[13px] text-white/40 hover:text-white/80 transition-colors cursor-pointer">Roles</span>
           <span className="text-[13px] text-white/40 hover:text-white/80 transition-colors cursor-pointer">Pricing</span>
           <button
-            onClick={() => navigate("/setup")}
+            onClick={() => navigate("/login")}
             className="px-[18px] py-2 bg-violet-600/20 border border-violet-500/35 rounded-[10px] text-[13px] font-medium text-violet-300/90 hover:bg-violet-600/35 hover:border-violet-400/50 transition-all duration-200"
           >
             Start Free
@@ -189,7 +189,7 @@ export default function HomePage() {
 
         <div className="flex items-center justify-center gap-3.5 flex-wrap">
           <button
-            onClick={() => navigate("/setup")}
+            onClick={() => navigate("/login")}
             className="flex items-center gap-2 px-7 py-3.5 bg-violet-600 hover:bg-violet-500 rounded-[14px] text-[15px] font-semibold text-white transition-all duration-200 hover:-translate-y-px hover:shadow-[0_0_40px_rgba(124,58,237,0.5)] shadow-[0_0_30px_rgba(124,58,237,0.35)] active:scale-[0.98]"
           >
             <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
@@ -347,7 +347,7 @@ export default function HomePage() {
           <h2 className="relative text-[clamp(24px,4vw,38px)] font-bold tracking-tight text-white/90 mb-4">Ready to practice?</h2>
           <p className="relative text-[15px] text-white/35 mb-9 font-light">Start your first session in under two minutes. No credit card required.</p>
           <button
-            onClick={() => navigate("/setup")}
+            onClick={() => navigate("/login")}
             className="relative inline-flex items-center gap-2.5 px-8 py-4 bg-violet-600 hover:bg-violet-500 rounded-[14px] text-[16px] font-semibold text-white transition-all duration-200 hover:-translate-y-0.5 shadow-[0_0_40px_rgba(124,58,237,0.4)] hover:shadow-[0_0_60px_rgba(124,58,237,0.55)] active:scale-[0.98]"
           >
             <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>

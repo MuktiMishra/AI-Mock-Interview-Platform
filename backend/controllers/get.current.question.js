@@ -1,6 +1,7 @@
 import Session from "../models/session.model.js";
 import Question from "../models/question.model.js";
 import model from "../utils/geminiClient.js"
+import { QUESTION_PLAN } from "../utils/questionPlan.js";
 
 export const generateQuestion = async ({
   domain,
@@ -78,9 +79,7 @@ export const getCurrentQuestion = async (req, res) => {
       });
     }
 
-    // 🎯 Decide section dynamically
-    const sections = ["aptitude", "technical1", "technical2", "coding", "hr"];
-    const section = sections[session.currentIndex % sections.length];
+    const section = QUESTION_PLAN[session.currentIndex];
 
     // 🧠 (Optional but powerful) Avoid repetition
     const previousQuestions = await Question.find({
