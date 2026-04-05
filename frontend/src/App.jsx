@@ -12,6 +12,8 @@ import LoginDashboard from "./pages/LoginDashboard";
 import HomePage from "./pages/HomePage";
 import History from "./pages/History";
 import Settings from "./pages/Settings";
+import DriveHub from "./pages/DriveHub";
+import DriveReport from "./pages/DriveReport";
 
 export default function App() {
   return (
@@ -27,6 +29,8 @@ export default function App() {
         <Route path="/report/:id" element={<ProtectedRoute><ReportPage /></ProtectedRoute>} />
         <Route path="/dashboard" element={<ProtectedRoute><LoginDashboard /></ProtectedRoute>} />
         <Route path="/history" element={<ProtectedRoute><History /></ProtectedRoute>} />
+        <Route path="//drive/:driveId" element={<ProtectedRoute><DriveHub /></ProtectedRoute>} />
+        <Route path="//drive/:driveId/report" element={<ProtectedRoute><DriveReport /></ProtectedRoute>} />
         <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
 
         <Route path="/interview/:id" element={<InterviewSession />} />

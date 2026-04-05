@@ -6,7 +6,6 @@ import { ElevenLabsClient } from "@elevenlabs/elevenlabs-js";
 import dotenv from "dotenv";
 import model from "../utils/geminiClient.js";
 import { generateQuestion } from "./get.current.question.js";
-import axios from "axios";
 import { QUESTION_PLAN } from "../utils/questionPlan.js";
 dotenv.config();
 
@@ -127,8 +126,10 @@ STRICT: Only output a number.
     });
 
     session.currentIndex += 1;
+    
+    const TOTAL_QUESTIONS = 10;
 
-    if (session.currentIndex >= session.questionIds.length) {
+    if (session.currentIndex >= TOTAL_QUESTIONS) {
       session.status = "completed";
       session.completedAt = new Date();
       await session.save();
@@ -142,7 +143,7 @@ STRICT: Only output a number.
 
     await session.save();
 
-    const section = QUESTION_PLAN[session.currentIndex];
+    const section = session.section;
 
     const aiData = await generateQuestion({
       domain: session.domain,
