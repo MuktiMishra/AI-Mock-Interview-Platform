@@ -60,11 +60,19 @@ export default function InterviewSession() {
   }, [timeLeft]);
 
   useEffect(() => {
-    if (loading) return;
-    if (timeLeft <= 0) { handleAutoSubmit(); return; }
-    timerRef.current = setTimeout(() => setTimeLeft((prev) => prev - 1), 1000);
-    return () => clearTimeout(timerRef.current);
-  }, [timeLeft, loading]);
+  if (!question || loading) return;
+
+  if (timeLeft <= 0) {
+    handleAutoSubmit();
+    return;
+  }
+
+  timerRef.current = setTimeout(() => {
+    setTimeLeft((prev) => prev - 1);
+  }, 1000);
+
+  return () => clearTimeout(timerRef.current);
+}, [timeLeft, loading, question]);
 
   const playBeep = () => {
     try {
