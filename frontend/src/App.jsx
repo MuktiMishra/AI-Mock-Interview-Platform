@@ -14,6 +14,7 @@ import History from "./pages/History";
 import Settings from "./pages/Settings";
 import DriveHub from "./pages/DriveHub";
 import DriveReport from "./pages/DriveReport";
+import ResumeUpload from "./pages/ResumeUpload";
 
 export default function App() {
   return (
@@ -31,6 +32,7 @@ export default function App() {
         <Route path="/history" element={<ProtectedRoute><History /></ProtectedRoute>} />
         <Route path="//drive/:driveId" element={<ProtectedRoute><DriveHub /></ProtectedRoute>} />
         <Route path="//drive/:driveId/report" element={<ProtectedRoute><DriveReport /></ProtectedRoute>} />
+        <Route path="/drive/:driveId/resume"  element={<ProtectedRoute><ResumeUpload /></ProtectedRoute>} />
         <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
 
         <Route path="/interview/:id" element={<InterviewSession />} />

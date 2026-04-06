@@ -1,6 +1,7 @@
 import express from "express";
 import { authMiddleware } from "../middleware/protect.route.js";
-import { startDrive, getDrive, completeRound, startRound } from "../controllers/drive.controller.js";
+import { startDrive, getDrive, completeRound, startRound, uploadResume } from "../controllers/drive.controller.js";
+import upload from "../middleware/upload.middleware.js";
 
 const router = express.Router();
 
@@ -15,5 +16,7 @@ router.patch("/:id/round/:sessionId/start", authMiddleware, startRound);
 
 // POST /drive/:id/complete-round           — mark round completed, check drive done
 router.post("/:id/complete-round", authMiddleware, completeRound);
+
+router.post("/:id/resume", authMiddleware, upload.single("resume"), uploadResume);
 
 export default router;
