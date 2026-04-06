@@ -24,6 +24,8 @@ export default function App() {
         <Route path="/interview" element={<ProtectedRoute><InterviewSession /></ProtectedRoute>} />
         <Route path="/results/:sessionId" element={<Results />} />
         <Route path="/start" element={<ProtectedRoute><StartInterview /></ProtectedRoute>} />
+        
+        {/* Authentication Routes  */}
         <Route path="/login" element={<LoginPage />} />
         <Route path="/signup" element={<SignupPage />} />
         <Route path="/report/:id" element={<ProtectedRoute><ReportPage /></ProtectedRoute>} />
