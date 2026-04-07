@@ -155,7 +155,7 @@ Preserve section headings, job titles, company names, skills, and project descri
 
     const resumeText = result.response.text().trim();
 
-    if (!resumeText || resumeText.length < 50) {
+    if (!resumeText) {
       return res.status(422).json({
         success: false,
         message: "Could not extract meaningful text from the PDF. Please try a text-based PDF.",

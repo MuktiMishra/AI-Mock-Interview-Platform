@@ -20,7 +20,7 @@ const storage = multer.diskStorage({
 });
 
 const fileFilter = (req, file, cb) => {
-  if (file.mimetype.startsWith("audio/")) {
+  if (file.mimetype.startsWith("audio/") || file.mimetype === "application/pdf") {
     cb(null, true);
   } else {
     cb(new Error("Only audio files are allowed"), false);
