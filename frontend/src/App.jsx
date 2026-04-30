@@ -32,8 +32,8 @@ export default function App() {
         <Route path="/report/:id" element={<ProtectedRoute><ReportPage /></ProtectedRoute>} />
         <Route path="/dashboard" element={<ProtectedRoute><LoginDashboard /></ProtectedRoute>} />
         <Route path="/history" element={<ProtectedRoute><History /></ProtectedRoute>} />
-        <Route path="//drive/:driveId" element={<ProtectedRoute><DriveHub /></ProtectedRoute>} />
-        <Route path="//drive/:driveId/report" element={<ProtectedRoute><DriveReport /></ProtectedRoute>} />
+        <Route path="/drive/:driveId" element={<ProtectedRoute><DriveHub /></ProtectedRoute>} />
+        <Route path="/drive/:driveId/report" element={<ProtectedRoute><DriveReport /></ProtectedRoute>} />
         <Route path="/drive/:driveId/resume"  element={<ProtectedRoute><ResumeUpload /></ProtectedRoute>} />
         <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
 

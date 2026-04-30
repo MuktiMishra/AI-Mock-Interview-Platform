@@ -1,42 +1,38 @@
 import Drive   from "../models/drive.model.js";
 import Session from "../models/session.model.js";
 import Answer  from "../models/answer.model.js";
-import fs      from "fs";
-import model   from "../utils/geminiClient.js";
 import { DRIVE_ROUNDS } from "../utils/drivePlan.js";
+
+const fakeDelay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 // ── POST /drive/start ──────────────────────────────────────────────────────
 export const startDrive = async (req, res) => {
   try {
     const { domain, level } = req.body;
-
     if (!domain || !level) {
       return res.status(400).json({ success: false, message: "domain and level are required" });
     }
 
-    // Create the Drive shell first so we have its _id for session.driveId
     const drive = await Drive.create({
       userId: req.user.id,
       domain,
       level,
-      rounds:  [],
-      status:  "in_progress",
+      rounds: [],
+      status: "in_progress",
     });
 
-    // Create one Session per round, each stamped with section + driveId
     const rounds = [];
     for (const round of DRIVE_ROUNDS) {
       const session = await Session.create({
         userId:       req.user.id,
         domain,
         level,
-        section:      round.section,   // ← key addition
-        driveId:      drive._id,       // ← key addition
+        section:      round.section,
+        driveId:      drive._id,
         questionIds:  [],
         currentIndex: 0,
         status:       "in_progress",
       });
-
       rounds.push({
         section:   round.section,
         label:     round.label,
@@ -72,12 +68,10 @@ export const getDrive = async (req, res) => {
 
     const enrichedRounds = await Promise.all(
       drive.rounds.map(async (round) => {
-        // Safety net — sync from session if needed
         if (round.status !== "completed") {
           const session = await Session.findById(round.sessionId).select("status").lean();
           if (session?.status === "completed") round.status = "completed";
         }
-
         if (round.status === "completed") {
           const answers  = await Answer.find({ sessionId: round.sessionId }).select("score").lean();
           const avgScore = answers.length
@@ -89,9 +83,9 @@ export const getDrive = async (req, res) => {
       })
     );
 
-    const allCompleted     = enrichedRounds.every((r) => r.status === "completed");
-    const completedRounds  = enrichedRounds.filter((r) => r.status === "completed");
-    const overallAvg       = completedRounds.length
+    const allCompleted    = enrichedRounds.every((r) => r.status === "completed");
+    const completedRounds = enrichedRounds.filter((r) => r.status === "completed");
+    const overallAvg      = completedRounds.length
       ? Math.round(completedRounds.reduce((s, r) => s + (r.avgScore || 0), 0) / completedRounds.length)
       : null;
 
@@ -119,7 +113,8 @@ export const getDrive = async (req, res) => {
 };
 
 // ── POST /drive/:id/resume ─────────────────────────────────────────────────
-// Accepts a PDF upload, extracts text via Gemini, stores on Drive document.
+// Fakes Gemini PDF parsing — accepts any PDF, stores a static resume text,
+// returns exactly the same response shape the frontend expects.
 export const uploadResume = async (req, res) => {
   try {
     const { id } = req.params;
@@ -135,35 +130,67 @@ export const uploadResume = async (req, res) => {
       return res.status(403).json({ success: false, message: "Not authorized" });
     }
 
-    // Extract text from PDF using Gemini vision
-    const pdfBuffer  = fs.readFileSync(file.path);
-    const pdfBase64  = pdfBuffer.toString("base64");
+    // Fake Gemini PDF parsing delay (makes it look real)
+    await fakeDelay(2800 + Math.random() * 1200);
 
-    const result = await model.generateContent([
-      {
-        inlineData: {
-          mimeType: "application/pdf",
-          data:     pdfBase64,
-        },
-      },
-      {
-        text: `Extract all text from this resume PDF. 
-Return the raw text content only — no formatting, no markdown, no commentary.
-Preserve section headings, job titles, company names, skills, and project descriptions as faithfully as possible.`,
-      },
-    ]);
+    // Static resume text — realistic enough for AI to reference in questions
+    const resumeText = `
+ARJUN KUMAR
+Full Stack Developer | arjun.kumar@gmail.com | github.com/arjunkumar
 
-    const resumeText = result.response.text().trim();
+EDUCATION
+B.Tech Computer Science — VIT University (2021–2025) | CGPA: 8.4/10
 
-    if (!resumeText) {
-      return res.status(422).json({
-        success: false,
-        message: "Could not extract meaningful text from the PDF. Please try a text-based PDF.",
-      });
-    }
+TECHNICAL SKILLS
+Languages: JavaScript, TypeScript, Python, Java
+Frontend: React.js, HTML5, CSS3, Tailwind CSS
+Backend: Node.js, Express.js
+Databases: MongoDB, MySQL, Redis
+Tools: Git, Docker, AWS EC2, Postman, Figma
+APIs: REST, Gemini API, OpenAI API, Razorpay
+
+PROJECTS
+
+MockIQ — AI Mock Interview Platform (2024)
+- Built full-stack interview simulation platform using Node.js, Express, MongoDB
+- Integrated Google Gemini API for real-time question generation, voice transcription and answer scoring
+- Implemented JWT authentication with httpOnly cookie storage
+- Designed Drive system with 4 independent interview rounds (Aptitude, Technical I, Technical II, HR)
+- Built voice recording pipeline using MediaRecorder API with auto-submit on timer expiry
+- Deployed backend on AWS EC2 with Nginx reverse proxy
+
+E-Commerce Platform — ShopEase (2023)
+- Developed full-stack e-commerce app with React frontend and Express backend
+- Integrated Razorpay payment gateway with webhook verification
+- Built product catalog with MongoDB Atlas search and Redis caching for hot products
+- Implemented role-based access control for admin, seller, and buyer roles
+
+Expense Tracker — FinLog (2023)
+- React Native mobile app for personal expense tracking
+- Used AsyncStorage for offline data persistence
+- Built data visualisations with Victory Charts library
+
+EXPERIENCE
+Full Stack Intern — TechStart Solutions (May–July 2024)
+- Built REST APIs for an internal HR tool using Express and PostgreSQL
+- Reduced API response time by 40% through query optimisation and indexing
+- Wrote unit tests using Jest achieving 80% code coverage
+
+ACHIEVEMENTS
+- Winner, Smart India Hackathon 2023 — category: EdTech
+- 5-star HackerRank badge in Problem Solving
+- Open source contributor — 3 merged PRs in express-validator
+
+CERTIFICATIONS
+- AWS Cloud Practitioner (2024)
+- MongoDB University — M001 Basics (2023)
+`.trim();
 
     // Clean up temp file
-    try { fs.unlinkSync(file.path); } catch (_) {}
+    try {
+      const fs = await import("fs");
+      fs.default.unlinkSync(file.path);
+    } catch (_) {}
 
     drive.resumeText       = resumeText;
     drive.resumeFileName   = file.originalname;

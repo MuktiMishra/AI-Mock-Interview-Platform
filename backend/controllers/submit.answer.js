@@ -2,53 +2,52 @@ import Session  from "../models/session.model.js";
 import Question from "../models/question.model.js";
 import Answer   from "../models/answer.model.js";
 import Drive    from "../models/drive.model.js";
-import fs       from "fs";
-import model    from "../utils/geminiClient.js";
-import { generateQuestion } from "./get.current.question.js";
-import dotenv   from "dotenv";
-dotenv.config();
+import { STATIC_QUESTIONS, STATIC_SCORES, STATIC_TRANSCRIPTS, generateQuestion } from "./get.current.question.js";
 
-// ── Score an open-ended voice answer via Gemini ────────────────────────────
-const scoreVoiceAnswer = async (questionText, transcript) => {
-  const prompt = `
-You are an AI interview evaluator.
+// ── Fake delay ─────────────────────────────────────────────────────────────
+const fakeDelay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
-Question:
-${questionText}
-
-Candidate Answer (transcribed from audio):
-${transcript || "(no answer provided)"}
-
-Evaluate and return ONLY a number between 1 and 100.
-
-Rules:
-- 90–100: Excellent — comprehensive, accurate, well-structured
-- 70–89:  Good — mostly correct with minor gaps
-- 40–69:  Average — partially correct or vague
-- 1–39:   Poor — incorrect or no meaningful answer
-
-STRICT: Output only a single integer. No explanation.
-`;
-  const result = await model.generateContent(prompt);
-  const text   = result.response.text().trim();
-  return parseInt(text.match(/\d+/)?.[0]) || 0;
+// ── Get static score for this section + question index ─────────────────────
+const getStaticScore = (section, index) => {
+  const scores = STATIC_SCORES[section] || STATIC_SCORES.technical1;
+  return scores[index % scores.length];
 };
 
-// ── Score an MCQ answer (binary) ───────────────────────────────────────────
-const scoreMCQAnswer = (selectedOption, correctAnswer) => {
-  if (!correctAnswer || !selectedOption) return 0;
-  // selectedOption arrives as "A", "B", "C", or "D"
-  // correctAnswer stored as "A", "B", "C", or "D"
-  return selectedOption.trim().toUpperCase() === correctAnswer.trim().toUpperCase() ? 100 : 0;
+// ── Get static transcript for voice sections ───────────────────────────────
+const getStaticTranscript = (section, index) => {
+  if (section === "aptitude") return null; // MCQ, no transcript needed
+  const transcripts = STATIC_TRANSCRIPTS[section] || STATIC_TRANSCRIPTS.technical1;
+  return transcripts[index % transcripts.length];
+};
+
+// ── Notify drive round complete ────────────────────────────────────────────
+const notifyDriveRoundComplete = async (driveId, sessionId, answers) => {
+  if (!driveId) return;
+  try {
+    const drive = await Drive.findById(driveId);
+    if (!drive) return;
+    const round = drive.rounds.find((r) => String(r.sessionId) === String(sessionId));
+    if (!round) return;
+    const avgScore = answers.length
+      ? Math.round(answers.reduce((s, a) => s + a.score, 0) / answers.length)
+      : 0;
+    round.status      = "completed";
+    round.avgScore    = avgScore;
+    round.completedAt = new Date();
+    const allDone = drive.rounds.every((r) => r.status === "completed");
+    if (allDone) { drive.status = "completed"; drive.completedAt = new Date(); }
+    await drive.save();
+  } catch (err) {
+    console.error("Drive notify failed:", err);
+  }
 };
 
 // ── Main controller ────────────────────────────────────────────────────────
 export const submitAnswer = async (req, res) => {
   try {
-    const { id } = req.params;                  // sessionId
+    const { id } = req.params;
     const { question, selectedOption } = req.body;
-    // selectedOption is sent for aptitude MCQs ("A" | "B" | "C" | "D")
-    // audio file is attached for voice rounds
+    const driveId = req.query.driveId || req.body.driveId || null;
 
     const session = await Session.findById(id);
     if (!session) {
@@ -67,39 +66,34 @@ export const submitAnswer = async (req, res) => {
       return res.status(200).json({ success: true, data: { completed: true } });
     }
 
-    // Fetch the full question document so we have correctAnswer + section
     const questionDoc = await Question.findById(currentQuestionId).lean();
     const section     = questionDoc?.section || session.section || "technical1";
     const isAptitude  = section === "aptitude";
+    const answerIndex = session.currentIndex;
 
-    const file = req.file;
+    // ── Fake the AI evaluation delay ──
+    // Aptitude: quick (just checking answer) — 0.6–1s
+    // Voice: longer (simulating transcription + scoring) — 2.5–4s
+    const delayMs = isAptitude
+      ? 600  + Math.random() * 400
+      : 2500 + Math.random() * 1500;
+    await fakeDelay(delayMs);
 
-    // ── Transcribe (voice rounds only) ──
-    let transcript = "";
-    if (!isAptitude && file) {
-      const audioBuffer = fs.readFileSync(file.path);
-      const result = await model.generateContent([
-        { inlineData: { mimeType: file.mimetype, data: audioBuffer.toString("base64") } },
-        { text: "Transcribe this audio clearly and accurately." },
-      ]);
-      transcript = result.response.text();
-    }
+    // ── Get score ──
+    const score = getStaticScore(section, answerIndex);
 
-    // ── Score ──
-    let score = 0;
-    if (isAptitude) {
-      // MCQ: binary scoring, no AI call needed
-      score = scoreMCQAnswer(selectedOption, questionDoc?.correctAnswer);
-    } else {
-      score = await scoreVoiceAnswer(question, transcript);
-    }
+    // ── Get transcript ──
+    const transcript = isAptitude
+      ? `Selected: ${selectedOption || "none"}`
+      : getStaticTranscript(section, answerIndex);
 
     // ── Persist answer ──
+    const file = req.file;
     await Answer.create({
       sessionId:  session._id,
       questionId: currentQuestionId,
       userId:     req.user.id,
-      transcript: isAptitude ? `Selected: ${selectedOption || "none"}` : transcript,
+      transcript: transcript || "",
       score,
       metrics: { fillerCount: 0, wpm: 0 },
       audio: file
@@ -109,13 +103,20 @@ export const submitAnswer = async (req, res) => {
 
     // ── Advance index ──
     session.currentIndex += 1;
-
     const TOTAL_QUESTIONS = 10;
 
     if (session.currentIndex >= TOTAL_QUESTIONS) {
       session.status      = "completed";
       session.completedAt = new Date();
       await session.save();
+
+      // Pull all answers for drive notification
+      const allAnswers = await Answer.find({ sessionId: session._id }).select("score").lean();
+      const sessionDriveId = driveId || session.driveId;
+      if (sessionDriveId) {
+        await notifyDriveRoundComplete(sessionDriveId, session._id, allAnswers);
+      }
+
       return res.status(200).json({
         success: true,
         data: { completed: true, score },
@@ -124,39 +125,28 @@ export const submitAnswer = async (req, res) => {
 
     await session.save();
 
-    // ── Generate next question ──
-    const QUESTION_PLAN = ["aptitude","technical1","technical2","coding","hr"];
+    // ── Generate next static question ──
+    const QUESTION_PLAN = ["aptitude", "technical1", "technical2", "coding", "hr"];
     const nextSection   = session.section || QUESTION_PLAN[session.currentIndex % QUESTION_PLAN.length];
 
-    // Resume text for technical2
-    let resumeText = null;
-    if (nextSection === "technical2" && session.driveId) {
-      const drive = await Drive.findById(session.driveId).select("resumeText").lean();
-      resumeText  = drive?.resumeText || null;
-    }
+    const bank    = STATIC_QUESTIONS[nextSection] || STATIC_QUESTIONS.technical1;
+    const nextIdx = session.currentIndex % bank.length;
 
-    const previousQuestions = await Question.find({
-      _id: { $in: session.questionIds },
-    }).select("text").lean();
+    // Fake AI question generation delay
+    await fakeDelay(1200 + Math.random() * 800);
 
-    const aiData = await generateQuestion({
-      domain:   session.domain,
-      level:    session.level,
-      section:  nextSection,
-      previousQuestions: previousQuestions.map((q) => q.text),
-      resumeText,
-    });
+    const staticQ = bank[nextIdx];
 
     const newQuestion = await Question.create({
       domain:           session.domain,
       level:            session.level,
       section:          nextSection,
-      text:             aiData.text,
-      options:          aiData.options       || [],
-      correctAnswer:    aiData.correctAnswer || null,
-      tags:             aiData.tags,
-      expectedKeywords: aiData.expectedKeywords,
-      rubric:           aiData.rubric,
+      text:             staticQ.text,
+      options:          staticQ.options       || [],
+      correctAnswer:    staticQ.correctAnswer || null,
+      tags:             staticQ.tags,
+      expectedKeywords: staticQ.expectedKeywords,
+      rubric:           staticQ.rubric,
     });
 
     session.questionIds.push(newQuestion._id);
@@ -170,7 +160,7 @@ export const submitAnswer = async (req, res) => {
         currentIndex:   session.currentIndex,
         totalQuestions: TOTAL_QUESTIONS,
         section:        nextSection,
-        question:       newQuestion,  // includes options + correctAnswer for MCQ
+        question:       newQuestion,
       },
     });
   } catch (error) {
