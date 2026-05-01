@@ -10,7 +10,7 @@ const DRIVE_ROUNDS = [
   { section: "hr",         label: "HR Round",     color: "#f472b6", bg: "rgba(244,114,182,0.1)",  border: "rgba(244,114,182,0.25)" },
 ];
 
-const DOMAIN_LABELS = { "web-dev": "Web Dev", frontend: "Frontend", backend: "Backend" };
+const DOMAIN_LABELS = { "web-dev": "Web Dev", frontend: "Frontend", backend: "Backend", "devops": "DevOps (Deployment Ops)", "ml": "Machine Learning" };
 const LEVEL_LABELS  = { fresher: "Fresher", intermediate: "Intermediate", advanced: "Advanced" };
 const levels = [
   { value: "fresher",      label: "Fresher"      },
@@ -100,6 +100,8 @@ const StartInterview = () => {
                   <option value="web-dev">Web Dev</option>
                   <option value="frontend">Frontend</option>
                   <option value="backend">Backend</option>
+                  <option value="devops">Devops</option>
+                  <option value="ml">Machine Learning</option>
                 </select>
                 <svg className="absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none w-3.5 h-3.5 text-white/25" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                   <path d="M6 9l6 6 6-6" strokeLinecap="round" strokeLinejoin="round" />

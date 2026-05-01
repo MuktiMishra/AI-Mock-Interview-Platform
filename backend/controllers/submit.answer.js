@@ -2,7 +2,7 @@ import Session  from "../models/session.model.js";
 import Question from "../models/question.model.js";
 import Answer   from "../models/answer.model.js";
 import Drive    from "../models/drive.model.js";
-import { STATIC_QUESTIONS, STATIC_SCORES, STATIC_TRANSCRIPTS, generateQuestion } from "./get.current.question.js";
+import { STATIC_QUESTIONS, STATIC_SCORES, STATIC_TRANSCRIPTS, pickRandomIndex } from "./get.current.question.js";
 
 // ── Fake delay ─────────────────────────────────────────────────────────────
 const fakeDelay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -72,8 +72,6 @@ export const submitAnswer = async (req, res) => {
     const answerIndex = session.currentIndex;
 
     // ── Fake the AI evaluation delay ──
-    // Aptitude: quick (just checking answer) — 0.6–1s
-    // Voice: longer (simulating transcription + scoring) — 2.5–4s
     const delayMs = isAptitude
       ? 600  + Math.random() * 400
       : 2500 + Math.random() * 1500;
@@ -110,7 +108,6 @@ export const submitAnswer = async (req, res) => {
       session.completedAt = new Date();
       await session.save();
 
-      // Pull all answers for drive notification
       const allAnswers = await Answer.find({ sessionId: session._id }).select("score").lean();
       const sessionDriveId = driveId || session.driveId;
       if (sessionDriveId) {
@@ -125,16 +122,20 @@ export const submitAnswer = async (req, res) => {
 
     await session.save();
 
-    // ── Generate next static question ──
+    // ── Generate next random question (no repeats) ──
     const QUESTION_PLAN = ["aptitude", "technical1", "technical2", "coding", "hr"];
     const nextSection   = session.section || QUESTION_PLAN[session.currentIndex % QUESTION_PLAN.length];
 
-    const bank    = STATIC_QUESTIONS[nextSection] || STATIC_QUESTIONS.technical1;
-    const nextIdx = session.currentIndex % bank.length;
+    const bank = STATIC_QUESTIONS[nextSection] || STATIC_QUESTIONS.technical1;
+
+    // Collect already-used question texts to avoid repeats
+    const existingQuestions = await Question.find({ _id: { $in: session.questionIds } }).select("text").lean();
+    const usedTexts = existingQuestions.map((q) => q.text);
 
     // Fake AI question generation delay
     await fakeDelay(1200 + Math.random() * 800);
 
+    const nextIdx = pickRandomIndex(bank, usedTexts);
     const staticQ = bank[nextIdx];
 
     const newQuestion = await Question.create({
